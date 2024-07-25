@@ -7,7 +7,7 @@ import multer from 'multer';
 import { chromium } from 'playwright';
 import { htmlToText } from 'html-to-text';
 import axios, { AxiosError } from 'axios';
-import { extractFromWeb } from '@/extensions/extensions.js';
+import { extractFromUrls, extractFromWebRaw, getUrlsForTerm } from '@/extensions/extensions.js';
 
 const router = Router();
 
@@ -17,20 +17,28 @@ const upload = multer({ storage: storage });
 router.post('/dev/extractor/list/results', async (req, res) => {
     var items = req.body.items;
 
-    var googleResults: (Promise<Promise<{ url: string; content: string; } | undefined>[]>)[] = [];
-    items.map((item: string) => googleResults = [...googleResults, extractFromWeb(item, 5)])
 
-    var extractions = (await Promise.all(googleResults)).flat();
-    var results = await Promise.all(extractions);
+    var resultURLs: Promise<any[]>[] = [];
+    items.map((item: string) => resultURLs = [...resultURLs, getUrlsForTerm(item, 5)]);
 
-    res.json({status: 'fetched', data: results});
+    var urls = (await Promise.all(resultURLs)).flat();
+
+    // var googleResults: (Promise<Promise<{ url: string; content: string; } | undefined>[]>)[] = [];
+    // items.map((item: string) => googleResults = [...googleResults, extractFromUrls(item, 5)])
+
+    // var extractions = (await Promise.all(googleResults)).flat();
+    // var results = await Promise.all(extractions);
+
+    // console.log(results);
+
+    res.json({status: 'fetched', data: urls});
 });
 
 router.get('/dev/extractor/get/results', async (req, res) => {
 
     var searchTerm: string = req.query.search as any;
     var searchNum: number = req.query.num as any ?? 10;
-    var executions = await extractFromWeb(searchTerm, searchNum)
+    var executions = await extractFromWebRaw(searchTerm, searchNum)
 
     var complete = await Promise.all(executions);
     
