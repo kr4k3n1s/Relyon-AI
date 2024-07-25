@@ -1,3 +1,4 @@
+import { CHROMA_HOST } from "@/config/constants/config.js";
 import { analysisTemplate } from "@/promptTemplates/analysisTemplate.js";
 import { compositionTemplate } from "@/promptTemplates/compositionTemplate.js";
 import { inquiryTemplate } from "@/promptTemplates/inquiryTemplate.js";
@@ -92,7 +93,7 @@ export class MedlineSourceProcessor {
         const embeddings = new OpenAIEmbeddings();
         const vectorStore = new Chroma(embeddings, {
           collectionName: "test-knowledge",
-          url: "http://88.212.54.66:8000",
+          url: CHROMA_HOST,
         });
 
         // const inquiry = 'digestion+OR+stomach-pain+OR+milk';
