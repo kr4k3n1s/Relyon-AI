@@ -22,7 +22,7 @@ export class MedlineSourceProcessor {
 
     async buildInquiry(question: string) {
         const model = new ChatOpenAI({
-          model: "gpt-3.5-turbo",
+          model: "gpt-4o-mini",
           temperature: 0
         });
         const parser = new StringOutputParser();
@@ -111,7 +111,7 @@ export class MedlineSourceProcessor {
         console.log(response);
 
         const model = new ChatOpenAI({
-            model: "gpt-3.5-turbo",
+            model: "gpt-4o-mini",
             temperature: 0
         });
         const parser = new StringOutputParser();
@@ -123,7 +123,7 @@ export class MedlineSourceProcessor {
 
     static async getFoodFromUser(question: string) {
       const model = new ChatOpenAI({
-        model: "gpt-3.5-turbo",
+        model: "gpt-4o-mini",
         temperature: 0
       });
       const parser = new StringOutputParser();

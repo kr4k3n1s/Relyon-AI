@@ -1,4 +1,4 @@
-import { HOST } from "@/constants/config.js";
+import { HOST } from "@/config/constants/config.js";
 import axios, { AxiosError } from "axios";
 
 export interface RelyonAllergen {

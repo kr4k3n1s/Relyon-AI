@@ -1,4 +1,4 @@
-import { QueryParameter, QueryObject } from "@/utils/RelyonCore.js";
+import { QueryParameter, QueryObject } from "@/RelyonFramework/core/RelyonCore.js";
 
 const defaultOptions = {
   country: 'world',

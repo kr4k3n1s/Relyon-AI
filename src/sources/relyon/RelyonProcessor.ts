@@ -1,5 +1,5 @@
-import { HOST } from "@/constants/config.js";
-import { RelyonAllergen } from "@/models/RelyonAllergen.js";
+import { HOST } from "@/config/constants/config.js";
+import { RelyonAllergen } from "@/RelyonFramework/models/RelyonAllergen.js";
 import axios, { AxiosError } from "axios";
 
 export class RelyonProcessor {

@@ -1,4 +1,4 @@
-import { RelyonAllergen } from "@/models/RelyonAllergen.js";
+import { RelyonAllergen } from "@/RelyonFramework/models/RelyonAllergen.js";
 
 export interface RelyonAllergenReport {
     name: string,

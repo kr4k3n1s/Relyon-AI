@@ -1,3 +1,4 @@
+import GeneralEndpoints from '@/RelyonFramework/apis/GeneralEndpoints.js';
 import axios from "axios";
 // import { ObjectId } from "mongodb";
 
@@ -114,4 +115,37 @@ export class QueryObject {
       
       return query;
     }
+}
+
+/**
+ * Type representing food data sources.
+ * @typedef {('OpenFoodFacts' | 'TheMealDB' | 'Edamam' | 'Internal')} FoodDataSources
+ */
+export type FoodDataSources = 'OpenFoodFacts' | 'TheMealDB' | 'Edamam' | 'Internal';
+
+/**
+ * @interface for the Relyon API.
+ * This interface represents the main application structure for the Relyon API and can be extended
+ * to include more properties and methods as needed.
+ * 
+ * @property {any} app - The main application instance of the Relyon API.
+ */
+export interface RelyonAPI {
+    app: any;
+}
+
+export class RelyonAPI {
+    
+    constructor(app: any){
+        this.app = app;
+    }
+
+    /**
+     * Attaches various services as middleware to the application.
+     * This function connects multiple APIs and services to the app, enabling seamless use of these services throughout the application.
+     */
+    attachServices(){
+        this.app.use(GeneralEndpoints);
+    }
+
 }

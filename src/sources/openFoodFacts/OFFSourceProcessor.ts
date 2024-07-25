@@ -1,6 +1,4 @@
-import { parseXML } from "@/utils/Utils.js";
-import axios from "axios";
-import { OFFExtended } from "./OpenFoodDataEXT.js";
+import { OFFExtended } from "@/sources/OpenFoodFacts/OpenFoodDataEXT.js";
 
 export class OFFSourceProcessor {
 

@@ -1,7 +1,7 @@
 import { stat } from "fs";
 import { RelyonAllergenReport } from "./RelyonAllergenReport.js";
-import { OFFSourceProcessor } from "@/sources/openFoodFacts/OFFSourceProcessor.js";
-import { RelyonProcessor } from "@/sources/relyon/RelyonProcessor.js";
+import { OFFSourceProcessor } from "@/sources/OpenFoodFacts/OFFSourceProcessor.js";
+import { RelyonProcessor } from "@/sources/Relyon/RelyonProcessor.js";
 
 export interface RelyonFoodReport {
     name: string,

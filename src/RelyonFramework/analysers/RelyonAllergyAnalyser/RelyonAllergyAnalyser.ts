@@ -1,4 +1,4 @@
-import { RelyonAllergen } from "@/models/RelyonAllergen.js";
+import { RelyonAllergen } from "@/RelyonFramework/models/RelyonAllergen.js";
 import { compositionTemplate } from "@/promptTemplates/compositionTemplate.js";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { ChatOpenAI } from "@langchain/openai";
