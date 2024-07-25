@@ -37,7 +37,7 @@ export async function getUrlsForTerm(searchTerm: string, searchNum: number) {
     return result;
 }
 
-export async function extractFromUrls(urls: string[]) {
+export function extractFromUrls(urls: string[]) {
     try {
         return urls.map(async url => {
             try {

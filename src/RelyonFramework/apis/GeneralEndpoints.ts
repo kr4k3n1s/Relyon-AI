@@ -8,6 +8,7 @@ import { chromium } from 'playwright';
 import { htmlToText } from 'html-to-text';
 import axios, { AxiosError } from 'axios';
 import { extractFromUrls, extractFromWebRaw, getUrlsForTerm } from '@/extensions/extensions.js';
+import { GoogleScraper } from '../scraper/GoogleScraper.js';
 
 const router = Router();
 
@@ -18,20 +19,13 @@ router.post('/dev/extractor/list/results', async (req, res) => {
     var items = req.body.items;
 
 
-    var resultURLs: Promise<any[]>[] = [];
-    items.map((item: string) => resultURLs = [...resultURLs, getUrlsForTerm(item, 5)]);
+    var resultURLs: Promise<void | { title: string | undefined; url: string; }[]>[] = [];
+    items.map((item: string) => resultURLs = [...resultURLs, GoogleScraper.executeQuery(GoogleScraper.buildQuery(item, 5))]);
 
-    var urls = (await Promise.all(resultURLs)).flat();
+    var urls = (await Promise.all(resultURLs)).flat().filter(item => item != undefined);
+    var googleResults = await Promise.all(extractFromUrls(urls.map((result) => result.url)));
 
-    // var googleResults: (Promise<Promise<{ url: string; content: string; } | undefined>[]>)[] = [];
-    // items.map((item: string) => googleResults = [...googleResults, extractFromUrls(item, 5)])
-
-    // var extractions = (await Promise.all(googleResults)).flat();
-    // var results = await Promise.all(extractions);
-
-    // console.log(results);
-
-    res.json({status: 'fetched', data: urls});
+    res.json({status: 'fetched', urls: urls, data: googleResults});
 });
 
 router.get('/dev/extractor/get/results', async (req, res) => {
