@@ -1,5 +1,7 @@
 import { SERP_HOST } from "@/config/constants/config.js";
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
+import { response } from "express";
+import pdf from 'pdf-parse';
 
 // export async function extractFromWeb(searchTerm: string, searchNum: number) {
 //     try {
@@ -37,13 +39,22 @@ export async function getUrlsForTerm(searchTerm: string, searchNum: number) {
     return result;
 }
 
+async function scraper(response: AxiosResponse<any, any>, url) {
+    return ((response.headers.getContentType as any)().toString().includes('pdf')) 
+                ? await scrapePDF(url) 
+                : response.data;
+}
+
 export function extractFromUrls(urls: string[]) {
     try {
         return urls.map(async url => {
             try {
-                const data = await axios.get(url)
-                                        .then(response => response.data)
-                                        .catch(error => console.log(error.message));
+                const data = (url.indexOf(".pdf") == -1) 
+                                ? await axios.get(url)
+                                             .then(async (response) => await scraper(response, url))
+                                             .catch(error => console.log(error.message))
+                                : await scrapePDF(url);
+
                 return {url: url, content: HTMLPartToTextPart(data)};
             } catch(ex) {
                 console.log(ex);
@@ -54,6 +65,15 @@ export function extractFromUrls(urls: string[]) {
         console.log(ex);
         throw ex;
     }
+}
+
+export async function scrapePDF(url: string) {
+    return await axios({ method: 'GET', url, responseType: 'arraybuffer'}).then(async result => {
+        const buffer = result.data;
+        
+        return await pdf(buffer).then(data => data.text)
+                                .catch(err => { throw err; });
+    }).catch(err => { throw err; });
 }
 
 

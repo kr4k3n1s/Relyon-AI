@@ -2,23 +2,101 @@ import { RelyonAllergyAnalyser } from '@/RelyonFramework/analysers/RelyonAllergy
 import { RelyonAllergen } from '@/RelyonFramework/models/RelyonAllergen.js';
 import { MedlineSourceProcessor } from '@/sources/MedLine/MedlineSourceProcessor.js';
 import { OFFSourceProcessor } from '@/sources/OpenFoodFacts/OFFSourceProcessor.js';
-import { Router } from 'express';
+import { response, Router } from 'express';
 import multer from 'multer';
 import { chromium } from 'playwright';
 import { htmlToText } from 'html-to-text';
 import axios, { AxiosError } from 'axios';
 import { extractFromUrls, extractFromWebRaw, getUrlsForTerm } from '@/extensions/extensions.js';
 import { GoogleScraper } from '../scraper/GoogleScraper.js';
+import { CHROMA_HOST } from '@/config/constants/config.js';
+import { Chroma } from '@langchain/community/vectorstores/chroma';
+import { OpenAIEmbeddings } from '@langchain/openai';
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 
 const router = Router();
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+router.get('/dev/analyser/analyse', async (req, res) => {
+    var message = req.query.message as string;
+
+    var responsePromises = Array(5).fill(0).map((_, i) => RelyonAllergyAnalyser.getAnalysis(message));
+    var responses = await Promise.all(responsePromises);
+
+    res.json({
+        analysis: responses[0].analysis,
+        index: responses.map(response => response.index).flat().filter((obj1, i, arr) => arr.findIndex(obj2 => (obj2.cause.toLowerCase() === obj1.cause.toLowerCase())) === i),
+        other_causes: responses.map(response => response.other_causes)
+    });
+});
+
+router.get('/dev/analyser/get/value', upload.single('fileContent'), async (req, res) => {
+    var message = req.query.term as string;
+
+    const embeddings = new OpenAIEmbeddings();
+    const vectorStore = new Chroma(embeddings, {
+        collectionName: "allergens-knowledge",
+        url: CHROMA_HOST,
+    });
+
+    const response = await vectorStore.similaritySearch(message, 10);
+    res.json(response);
+})
+
+// Handle POST request to /upload
+router.post('/dev/extractor/list/upload', upload.single('fileContent'), async (req, res) => {
+
+    if (!req.file) {
+        console.error('No file uploaded');
+        return res.status(400).send('No file uploaded');
+    }
+
+    const fileContent = req.file.buffer.toString('utf8');
+    const parsed: {urls: {title: string, url: string, rank: number}[], data: {url: string, content: string}[]} = JSON.parse(fileContent);
+
+
+    const embeddings = new OpenAIEmbeddings();
+    const vectorStore = new Chroma(embeddings, {
+        collectionName: "allergens-knowledge",
+        url: CHROMA_HOST,
+    });
+
+    var docs = (await Promise.all(parsed.data.map(async (obj: { content: string; url: any; }, index) => {
+        if(obj == null) return undefined;
+        const textSplitter = new RecursiveCharacterTextSplitter({chunkSize: 1000, chunkOverlap: 400});
+        const splits = await textSplitter.splitText(obj.content);
+
+        return splits.map(split => {
+            if(split == null || split == undefined) return undefined
+            return {
+                pageContent: split,
+                metadata: {
+                    source: obj.url,
+                }
+            }
+        }).filter(item => item != undefined);
+    }))).filter(item => item != undefined);
+
+
+    // Also supports an additional {ids: []} parameter for upsertion
+    // const ids = await vectorStore.addDocuments(docs);
+
+    // // const retriever = vectorStore.asRetriever(5);
+    // const response = await vectorStore.similaritySearch(message, 10);
+    var ids: string[] = []
+    for(var documents of docs) {
+        ids = [...ids, ...(await vectorStore.addDocuments(documents))];
+    }
+
+    res.json(ids.length);
+});
+
 router.post('/dev/extractor/list/results', async (req, res) => {
+    req.setTimeout(500000);
+    
     var items = req.body.items;
-
-
     var resultURLs: Promise<void | { title: string | undefined; url: string; }[]>[] = [];
     items.map((item: string) => resultURLs = [...resultURLs, GoogleScraper.executeQuery(GoogleScraper.buildQuery(item, 5))]);
 

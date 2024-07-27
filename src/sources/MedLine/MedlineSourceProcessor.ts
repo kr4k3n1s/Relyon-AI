@@ -92,23 +92,23 @@ export class MedlineSourceProcessor {
         if(message == undefined) throw new Error("User's input is empty, nothing to analyse")
         const embeddings = new OpenAIEmbeddings();
         const vectorStore = new Chroma(embeddings, {
-          collectionName: "test-knowledge",
+          collectionName: "allergens-knowledge",
           url: CHROMA_HOST,
         });
-
+        // const textSplitter = new RecursiveCharacterTextSplitter({chunkSize: 2000, chunkOverlap: 600});
         // const inquiry = 'digestion+OR+stomach-pain+OR+milk';
-        var processor = new MedlineSourceProcessor();
-        const inquiry = await processor.buildInquiry(message);
-        console.log('INQUIRY: ' + inquiry);
-        const documents = await (await (await processor.fetchData(inquiry)).parseRawData()).parseToDocuments();
+        // var processor = new MedlineSourceProcessor();
+        // const inquiry = await processor.buildInquiry(message);
+        // console.log('INQUIRY: ' + inquiry);
+        // const documents = await (await (await processor.fetchData(inquiry)).parseRawData()).parseToDocuments();
         // const ids = await vectorStore.addDocuments(documents);
-        console.log(documents);
+        // console.log(documents);
       
         // Also supports an additional {ids: []} parameter for upsertion
-        const ids = await vectorStore.addDocuments(documents);
+        // const ids = await vectorStore.addDocuments(documents);
       
         // const retriever = vectorStore.asRetriever(5);
-        const response = await vectorStore.similaritySearch(message, 10);
+        const response = await vectorStore.similaritySearch(message, 40);
         console.log(response);
 
         const model = new ChatOpenAI({
@@ -116,6 +116,7 @@ export class MedlineSourceProcessor {
             temperature: 0
         });
         const parser = new StringOutputParser();
+        
         const chain = analysisTemplate.pipe(model).pipe(parser);
         var result = await chain.invoke({ message: message, context: JSON.stringify(response)});
         
