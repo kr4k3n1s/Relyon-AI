@@ -27,7 +27,6 @@ export class RelyonAllergyAnalyser {
             properties: {
                 analysis: {
                     type: "string",
-                    // enum: ["positive", "negative"],
                     description: "A analysis in message format that can be interpreted to the user. Make it quite short just to inform user.",
                 },
                 index: {
