@@ -68,6 +68,41 @@ export class RelyonAllergyAnalyser {
         },
     };
 
+    static queryBreakdownSchema = {
+        name: "queryBreakdown",
+        description: "Analyse input from the user into 2 categories, what was consumed and what symptoms was caused.",
+        parameters: {
+            type: "object",
+            properties: {
+                consumed: {
+                    type: "array",
+                    description: "An array object of consumed components from analysed user input.",
+                    items: {
+                        type: "string", 
+                        description: "Name of the consumed part in lowercase with nominative form.",
+                    }
+                },
+                symptoms: {
+                    type: "array",
+                    description: "An array object of symptoms from analysed user input.",
+                    items: {
+                        type: "string",
+                        description: "Name of the symptom caused by any analysed food present in users input",
+                    }
+                },
+                // keywords: {
+                //     type: "array",
+                //     description: "An array object of keywords analysed from user input.",
+                //     items: {
+                //         type: "string",
+                //         description: "Keyword is an important extraction word from the input that can characterise partial content of the input.",
+                //     }
+                // },
+            },
+            required: ["consumed", "symptoms", "keywords"],
+        },
+    };
+
     constructor(profile: RelyonAnalysisProfile) {
         this.profile = profile;
     }
@@ -99,6 +134,17 @@ export class RelyonAllergyAnalyser {
 
 
         return analysisTemplate.pipe(functionModel).pipe(parser).invoke({ message: message, context: JSON.stringify(response)});
+    }
+
+    static async breakdownQuery(query: string) {
+        const parser = new JsonOutputFunctionsParser();
+        const model = new ChatOpenAI({ model: "gpt-4o-mini", temperature: 0.5});
+        const functionModel = model.bind({functions: [RelyonAllergyAnalyser.queryBreakdownSchema],
+            function_call: { name: "queryBreakdown" }});
+        var result = await functionModel.pipe(parser).invoke(query);
+
+        result['origin_query'] = query;
+        return result;
     }
 
 }

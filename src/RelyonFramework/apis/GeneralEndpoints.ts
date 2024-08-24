@@ -2,22 +2,66 @@ import { RelyonAllergyAnalyser } from '@/RelyonFramework/analysers/RelyonAllergy
 import { RelyonAllergen } from '@/RelyonFramework/models/RelyonAllergen.js';
 import { MedlineSourceProcessor } from '@/sources/MedLine/MedlineSourceProcessor.js';
 import { OFFSourceProcessor } from '@/sources/OpenFoodFacts/OFFSourceProcessor.js';
-import { response, Router } from 'express';
+import { Router } from 'express';
 import multer from 'multer';
 import { chromium } from 'playwright';
 import { htmlToText } from 'html-to-text';
-import axios, { AxiosError } from 'axios';
-import { extractFromUrls, extractFromWebRaw, getUrlsForTerm } from '@/extensions/extensions.js';
+import { extractFromUrls, extractFromWebRaw } from '@/extensions/extensions.js';
 import { GoogleScraper } from '../scraper/GoogleScraper.js';
 import { CHROMA_HOST } from '@/config/constants/config.js';
 import { Chroma } from '@langchain/community/vectorstores/chroma';
 import { OpenAIEmbeddings } from '@langchain/openai';
-import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import { CharacterTextSplitter } from "@langchain/textsplitters";
+import { ChromaClient, OpenAIEmbeddingFunction } from 'chromadb';
+import { env } from 'process';
+import axios from 'axios';
 
 const router = Router();
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
+
+router.post('/dev/database/search', async (req, res) => {
+
+    var queries = req.body.queries as string[];
+
+    const embeddings = new OpenAIEmbeddings();
+    const embeddingFunction = new OpenAIEmbeddingFunction({openai_api_key: env.OPENAI_API_KEY});
+    const client = new ChromaClient();
+
+    // const vectorStore = new Chroma(embeddings, {
+    //     collectionName: "allergens-knowledge",
+    //     url: CHROMA_HOST,
+    //     collectionMetadata: { "hnsw:space": "cosine" }
+    // });
+
+    const collection = await client.getCollection({
+        name:"allergens-knowledge",
+        embeddingFunction: embeddingFunction
+    })
+    
+    // const retriever = vectorStore.asRetriever({k: 25});
+    // const response = await retriever.invoke(message);
+
+    // var collection = await vectorStore.ensureCollection();
+    console.log('Retrieving...')
+    const response = await collection.query({ queryTexts: queries, nResults: 5})
+    // const response = await vectorStore.similaritySearchWithScore(message, 25);
+    return res.json(response);
+});
+
+router.post('/dev/analyser/query', async (req, res) => {
+    var message = req.body.message as string;
+
+    var response = await RelyonAllergyAnalyser.breakdownQuery(message);
+    res.json(response);
+
+    // res.json({
+    //     analysis: responses[0].analysis,
+    //     index: responses.map(response => response.index).flat().filter((obj1, i, arr) => arr.findIndex(obj2 => (obj2.cause.toLowerCase() === obj1.cause.toLowerCase())) === i),
+    //     other_causes: responses.map(response => response.other_causes)
+    // });
+});
 
 router.get('/dev/analyser/analyse', async (req, res) => {
     var message = req.query.message as string;
@@ -56,16 +100,16 @@ router.post('/dev/extractor/list/upload', upload.single('fileContent'), async (r
     const fileContent = req.file.buffer.toString('utf8');
     const parsed: {urls: {title: string, url: string, rank: number}[], data: {url: string, content: string}[]} = JSON.parse(fileContent);
 
-
     const embeddings = new OpenAIEmbeddings();
     const vectorStore = new Chroma(embeddings, {
-        collectionName: "allergens-knowledge",
+        collectionName: "allergens-knowledge-new",
         url: CHROMA_HOST,
     });
 
     var docs = (await Promise.all(parsed.data.map(async (obj: { content: string; url: any; }, index) => {
         if(obj == null) return undefined;
-        const textSplitter = new RecursiveCharacterTextSplitter({chunkSize: 1000, chunkOverlap: 400});
+        const textSplitter = new CharacterTextSplitter({chunkSize: 800, chunkOverlap: 300, separator: '. '});
+
         const splits = await textSplitter.splitText(obj.content);
 
         return splits.map(split => {
@@ -93,6 +137,18 @@ router.post('/dev/extractor/list/upload', upload.single('fileContent'), async (r
     res.json(ids.length);
 });
 
+router.post('/dev/extractor/test', async (req, res) => {
+    var url = req.query.url as string;
+
+    var result = await axios.get(url, {
+        headers: {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36",
+        }
+    }).then(res => res.data).catch(err => err)
+    res.json(result);
+})
+
 router.post('/dev/extractor/list/results', async (req, res) => {
     req.setTimeout(500000);
     
@@ -101,6 +157,7 @@ router.post('/dev/extractor/list/results', async (req, res) => {
     items.map((item: string) => resultURLs = [...resultURLs, GoogleScraper.executeQuery(GoogleScraper.buildQuery(item, 5))]);
 
     var urls = (await Promise.all(resultURLs)).flat().filter(item => item != undefined);
+    console.log('URLS: ' + urls);
     var googleResults = await Promise.all(extractFromUrls(urls.map((result) => result.url)));
 
     res.json({status: 'fetched', urls: urls, data: googleResults});

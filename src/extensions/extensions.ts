@@ -2,6 +2,8 @@ import { SERP_HOST } from "@/config/constants/config.js";
 import axios, { AxiosResponse } from "axios";
 import { response } from "express";
 import pdf from 'pdf-parse';
+import jsdom from "jsdom";
+const { JSDOM } = jsdom;
 
 // export async function extractFromWeb(searchTerm: string, searchNum: number) {
 //     try {
@@ -45,6 +47,34 @@ async function scraper(response: AxiosResponse<any, any>, url) {
                 : response.data;
 }
 
+function decodeHtmlEntities(content) {
+    var document = new JSDOM('').window.document;
+    // Create a temporary DOM element to parse HTML entities
+    const textArea = document.createElement('textarea');
+    
+    // Function to decode HTML entities
+    function decodeHTMLEntities(str) {
+        // Assign the string to the textarea element's innerHTML
+        textArea.innerHTML = str;
+        // The browser will automatically decode the entities
+        return textArea.value;
+    }
+
+    // Clean up and decode all entities
+    content = decodeHTMLEntities(content);
+
+    // Replace newline characters with space
+    content = content.replace(/(\r\n|\n|\r)/gm, " ");
+
+    // Replace multiple spaces with a single space
+    content = content.replace(/\s\s+/g, ' ');
+
+    // Trim leading and trailing spaces
+    content = content.trim();
+
+    return content;
+}
+
 export function extractFromUrls(urls: string[]) {
     try {
         return urls.map(async url => {
@@ -78,16 +108,17 @@ export async function scrapePDF(url: string) {
 
 
 const HTMLPartToTextPart = (HTMLPart) => (
-    HTMLPart
-      .replace(/\n/ig, '')
-      .replace(/<style[^>]*>[\s\S]*?<\/style[^>]*>/ig, '')
-      .replace(/<head[^>]*>[\s\S]*?<\/head[^>]*>/ig, '')
-      .replace(/<script[^>]*>[\s\S]*?<\/script[^>]*>/ig, '')
-      .replace(/<\/\s*(?:p|div)>/ig, '\n')
-      .replace(/<br[^>]*\/?>/ig, '\n')
-      .replace(/<[^>]*>/ig, '')
-      .replace('&nbsp;', ' ')
-      .replace(/[^\S\r\n][^\S\r\n]+/ig, ' ')
+      decodeHtmlEntities(HTMLPart
+        .replace(/\n/ig, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style[^>]*>/ig, '')
+        .replace(/<head[^>]*>[\s\S]*?<\/head[^>]*>/ig, '')
+        .replace(/<script[^>]*>[\s\S]*?<\/script[^>]*>/ig, '')
+        .replace(/<\/\s*(?:p|div)>/ig, '\n')
+        .replace(/<br[^>]*\/?>/ig, '\n')
+        .replace(/<[^>]*>/ig, '')
+        .replace('&nbsp;', ' ')
+        .replace(/[^\S\r\n][^\S\r\n]+/ig, ' '))
+        .replace('\t', '    ')
   );
 
 export async function extractFromWebRaw(searchTerm: string, searchNum: number) {
