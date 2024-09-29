@@ -25,7 +25,7 @@ router.post('/dev/database/search', async (req, res) => {
 
     var queries = req.body.queries as string[];
 
-    const embeddings = new OpenAIEmbeddings();
+    // const embeddings = new OpenAIEmbeddings();
     const embeddingFunction = new OpenAIEmbeddingFunction({openai_api_key: env.OPENAI_API_KEY});
     const client = new ChromaClient();
 
@@ -45,7 +45,7 @@ router.post('/dev/database/search', async (req, res) => {
 
     // var collection = await vectorStore.ensureCollection();
     console.log('Retrieving...')
-    const response = await collection.query({ queryTexts: queries, nResults: 5})
+    const response = await collection.query({ queryTexts: queries, nResults: 25})
     // const response = await vectorStore.similaritySearchWithScore(message, 25);
     return res.json(response);
 });
@@ -85,7 +85,7 @@ router.get('/dev/analyser/get/value', upload.single('fileContent'), async (req, 
         url: CHROMA_HOST,
     });
 
-    const response = await vectorStore.similaritySearch(message, 10);
+    const response = await vectorStore.similaritySearch(message, 30);
     res.json(response);
 })
 

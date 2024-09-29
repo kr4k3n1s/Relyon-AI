@@ -10,13 +10,17 @@ import { analysisTemplate } from "@/promptTemplates/analysisTemplate.js";
 import { CHROMA_HOST } from "@/config/constants/config.js";
 import { Chroma } from "@langchain/community/vectorstores/chroma";
 import { response } from "express";
+import axios from "axios";
+import { ChromaClient, TransformersEmbeddingFunction } from "chromadb";
+import { HuggingFaceTransformersEmbeddings } from "@langchain/community/embeddings/hf_transformers";
 
 export interface RelyonAllergyAnalyser {
     profile: RelyonAnalysisProfile;
 }
 
-
 export class RelyonAllergyAnalyser {
+
+    static defaultEmbeddingModel = "neuml/pubmedbert-base-embeddings";
 
     // Define the function schema
     static analysisFunctionSchema = {
@@ -119,16 +123,28 @@ export class RelyonAllergyAnalyser {
     }
 
     static async getAnalysis(message: string) {
-        const embeddings = new OpenAIEmbeddings();
-        const vectorStore = new Chroma(embeddings, {
-          collectionName: "allergens-knowledge",
-          url: CHROMA_HOST,
+
+        const transformer = new HuggingFaceTransformersEmbeddings({
+            modelName: RelyonAllergyAnalyser.defaultEmbeddingModel,
         });
+
+        const client = new ChromaClient();
+        const collection = await client.getCollection({ name: "pubmedberts-articles" })
+        const embeddings = await transformer.embedQuery(message);
+
+        const response = await collection.query({ queryEmbeddings: embeddings, nResults: 20})
+
+
+        // const vectorStore = new Chroma(embeddings, {
+        //   collectionName: "allergens-knowledge",
+        //   url: CHROMA_HOST,
+        // });
         
         const model = new ChatOpenAI({ model: "gpt-4o-mini", temperature: 0});
         const parser = new JsonOutputFunctionsParser();
 
-        const response = await vectorStore.similaritySearch(message, 20);
+
+        // const response = await vectorStore.similaritySearch(message, 20);
         const functionModel = model.bind({functions: [RelyonAllergyAnalyser.analysisFunctionSchema],
                                      function_call: { name: "allergyAnalysis" }});
 
